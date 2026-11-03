@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dream Eater — Catch Falling Stars</title>
+  <meta name="description" content="A magical dream world interactive game. Open your mouth to catch falling stars using your webcam and FaceMesh.">
+  
+  <!-- Google Fonts: Cinzel & Quicksand -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- p5.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  
+  <!-- ml5.js Library (Latest v1 with FaceMesh support) -->
+  <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+</head>
+<body>
+  <!-- Canvas Container for p5.js -->
+  <div id="game-container"></div>
+
+  <!-- UI Overlay -->
+  <div id="ui-layer">
+    <!-- Top HUD (Visible during Game) -->
+    <header id="hud" class="hud hidden">
+      <div class="hud-left">
+        <div class="world-badge">
+          <span class="world-indicator-dot"></span>
+          <span id="world-name">Midnight Garden</span>
+        </div>
+        <div class="world-subtext" id="world-subtitle">Realm of slumbering flora</div>
+      </div>
+
+      <div class="hud-center">
+        <div class="score-container">
+          <span class="score-label">DREAM SCORE</span>
+          <span id="score-display" class="score-value">0</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="progress-container">
+          <div class="progress-labels">
+            <span>CONSTELLATION</span>
+            <span id="star-count-text">0 / 30</span>
+          </div>
+          <div class="progress-bar-track">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <div class="controls-bar">
+          <!-- Mouth status indicator pill -->
+          <div id="mouth-pill" class="pill" title="Mouth status">
+            <span class="pill-dot" id="mouth-pill-dot"></span>
+            <span id="mouth-pill-text">Mouth Closed</span>
+          </div>
+
+          <!-- Input mode toggle (Camera / Mouse) -->
+          <button id="toggle-input-btn" class="icon-btn" title="Toggle Camera / Mouse tracking" aria-label="Toggle Input Mode">
+            <svg id="cam-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </button>
+
+          <!-- Audio toggle button -->
+          <button id="audio-btn" class="icon-btn" title="Mute / Unmute" aria-label="Toggle Audio">
+            <svg id="sound-on-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <svg id="sound-off-icon" class="hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- World Level Transition Banner -->
+    <div id="world-banner" class="world-banner hidden">
+      <div class="banner-glow"></div>
+      <h2 id="banner-title">Ascending to Level 2</h2>
+      <p id="banner-desc">Moonlit Ocean</p>
+    </div>
+
+    <!-- Start / Title Screen -->
+    <div id="start-screen" class="overlay-screen">
+      <div class="screen-card">
+        <div class="dream-halo"></div>
+        <div class="title-emblem">✧ ☾ ✧</div>
+        <h1 class="game-title">DREAM EATER</h1>
+        <p class="tagline">Open your mouth to swallow falling stars & weave the night</p>
+
+        <div class="star-guide">
+          <div class="guide-item">
+            <div class="star-icon star-gold">★</div>
+            <div class="guide-text">
+              <strong>Golden Star</strong>
+              <span>+10 pts &bull; Golden stardust</span>
+            </div>
+          </div>
+          <div class="guide-item">
+            <div class="star-icon star-blue">✦</div>
+            <div class="guide-text">
+              <strong>Blue Star</strong>
+              <span>+15 pts &bull; Luminous sapphire burst</span>
+            </div>
+          </div>
+          <div class="guide-item">
+            <div class="star-icon star-black">✷</div>
+            <div class="guide-text">
+              <strong>Nightmare Shard</strong>
+              <span>-10 pts &bull; Darkens the dream realm</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="instruction-box">
+          <div class="step">
+            <span class="step-num">1</span>
+            <span>Enable your webcam and face the screen</span>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <span><strong>Open your mouth</strong> when a star approaches to swallow it</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <span>Collect 30 celestial stars to manifest your final Constellation</span>
+          </div>
+        </div>
+
+        <!-- Camera Status Indicator -->
+        <div id="camera-status-pill" class="camera-status-pill">
+          <span class="status-pulse"></span>
+          <span id="camera-status-msg">Initializing camera & FaceMesh...</span>
+        </div>
+
+        <button id="start-btn" class="primary-btn glow-btn">
+          <span>START DREAMING</span>
+          <div class="btn-shine"></div>
+        </button>
+
+        <p class="sub-hint">Prefer mouse? You can switch to mouse/touch mode anytime.</p>
+      </div>
+    </div>
+
+    <!-- Final Constellation Screen -->
+    <div id="constellation-screen" class="overlay-screen hidden">
+      <div class="constellation-hud">
+        <div class="constellation-meta">
+          <span class="meta-label">CONSTELLATION DISCOVERED</span>
+          <h2 id="constellation-name" class="constellation-title">The Celestial Weaver</h2>
+          <p class="quote-text">“Every dream leaves a constellation behind.”</p>
+        </div>
+
+        <div class="final-stats">
+          <div class="stat-card">
+            <span class="stat-num" id="final-score">0</span>
+            <span class="stat-name">Final Dream Score</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="final-positive-stars">30</span>
+            <span class="stat-name">Stars Caught</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="final-shards-avoided">0</span>
+            <span class="stat-name">Nightmares Swallowed</span>
+          </div>
+        </div>
+
+        <div class="constellation-actions">
+          <button id="play-again-btn" class="primary-btn glow-btn">
+            <span>DREAM AGAIN</span>
+            <div class="btn-shine"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dark vignette overlay for nightmare star hit -->
+    <div id="nightmare-vignette" class="nightmare-vignette"></div>
+
+    <!-- Soft catch flash / glow -->
+    <div id="dream-flash" class="dream-flash"></div>
+  </div>
+
+  <!-- Game Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/tracker.js"></script>
+  <script src="js/worlds.js"></script>
+  <script src="js/stars.js"></script>
+  <script src="js/constellation.js"></script>
+  <script src="js/sketch.js"></script>
+</body>
+</html>
